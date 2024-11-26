@@ -1,0 +1,77 @@
+name: Build and Deploy Frontend
+
+on:
+  push:
+    branches: [ "main" ]
+
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the Code
+      - uses: actions/checkout@v4
+
+
+      # Step 2: Set up Node.js for Angular build
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+
+      # Step 3: Cache npm dependencies
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
+
+      # Step 4: Install npm  dependencies 
+      - name: Install Dependencies and Build Angular
+        run: |
+          cd papertrl-ui-v2
+          npm install
+
+
+        # Step 5: Run SonarQube Analysis BEFORE Angular build
+      - name: Run SonarQube Analysis
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: 'https://sonarcloud.io/'
+
+        # Step 6: Build Angular Application
+      - name: Build Angular Application
+        run: |
+          cd papertrl-ui-v2
+          npx ng build --configuration production
+
+
+      # Step 7: Configure AWS credentials for ECR
+      - name: Configure AWS credentials for ECR
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-1
+
+
+      # Step 8: Login to Amazon ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+
+      # Step 9: Build, tag, and push image to Amazon ECR
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: github-actions-task-private
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f papertrl-ui-v2/Dockerfile papertrl-ui-v2
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
