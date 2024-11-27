@@ -41,7 +41,7 @@ jobs:
         uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: 'https://sonarcloud.io/'
+          SONAR_HOST_URL: 'http://47.129.203.134:9000/projects/create'
 
         # Step 6: Build Angular Application
       - name: Build Angular Application
