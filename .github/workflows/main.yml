@@ -3,6 +3,9 @@ name: Build and Deploy Frontend 2
 on:
   push:
     branches: [ "branch-11" ]
+    paths:
+      - 'papertrl-ui-v2/**'
+  workflow_dispatch:  
 
 
 jobs:
